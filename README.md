@@ -1,6 +1,6 @@
 # Raccoon!
 
-A stupid simple download manager that I wrote to learn Go concepts better.
+A stupid simple download accelerator that I wrote to learn Go concepts better.
 
 | Usage                  | Command                                                      |
 | ---------------------- | ------------------------------------------------------------ |
