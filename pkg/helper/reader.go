@@ -24,6 +24,6 @@ func ReadWithTimeout(resp *http.Response, buf []byte, timeout time.Duration) (in
 	case result := <-resultChan:
 		return result.N, result.Err
 	case <-time.After(timeout):
-		return 0, fmt.Errorf("timeout reached")
+		return 0, fmt.Errorf("reading response body timed out")
 	}
 }

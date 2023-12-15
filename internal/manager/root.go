@@ -1,34 +1,33 @@
 package manager
 
 import (
-	"fmt"
-	"log"
-
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
 
 type rootCmd struct {
-	cmd   *cobra.Command
-	debug bool
-	exit  func(int)
+	cmd    *cobra.Command
+	debug  bool
+	logger *zerolog.Logger
+	exit   func(int)
 }
 
-func newRootCmd(exit func(int)) *rootCmd {
+func newRootCmd(customlogger *zerolog.Logger, exit func(int)) *rootCmd {
 	root := &rootCmd{
 		exit: exit,
 	}
+
 	cmd := &cobra.Command{
 		Use:           "raccoon",
 		Short:         "Stupid simple Download Accelerator",
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// if root.debug {
-			// // use zap
-			// }
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("invalid command")
+			if root.debug {
+				zerolog.SetGlobalLevel(zerolog.DebugLevel)
+			} else {
+				zerolog.SetGlobalLevel(zerolog.InfoLevel)
+			}
 		},
 	}
 
@@ -39,6 +38,8 @@ func newRootCmd(exit func(int)) *rootCmd {
 	)
 
 	root.cmd = cmd
+	root.logger = customlogger
+
 	return root
 }
 
@@ -47,8 +48,11 @@ func (cmd *rootCmd) Execute(args []string) {
 
 	err := cmd.cmd.Execute()
 	if err != nil {
-		log.Println(err.Error()) // temporary
-		cmd.exit(1)              // exits with code 1, i.e. general error
+		cmd.logger.Info().Msg("download failed")
+		cmd.logger.Debug().Err(err).Msg("details")
+		cmd.exit(1) // exits with code 1, i.e. general error
+	} else {
+		cmd.logger.Info().Msg("download finished")
 	}
 }
 
@@ -83,6 +87,6 @@ func commander(cmd *cobra.Command, args []string) []string {
 	return []string{"help"}
 }
 
-func Execute(exit func(int), args []string) {
-	newRootCmd(exit).Execute(args)
+func Execute(customlogger *zerolog.Logger, exit func(int), args []string) {
+	newRootCmd(customlogger, exit).Execute(args)
 }

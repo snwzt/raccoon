@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -41,7 +42,7 @@ func newURLCmd() *urlCmd {
 				root.opts.connections = 16
 			}
 
-			file, filepath, err := fileutil.CreateFile(args[0], root.opts.directory)
+			file, filename, err := fileutil.CreateFile(args[0], root.opts.directory)
 			if err != nil {
 				return err
 			}
@@ -54,8 +55,9 @@ func newURLCmd() *urlCmd {
 
 			status := []*models.Status{
 				{
-					Path:  filepath,
-					Parts: make([]int64, root.opts.connections),
+					Name:      filename,
+					Parts:     make([]int64, root.opts.connections),
+					FinalSize: math.MaxInt, // to fix the division by zero issue in begining
 				},
 			}
 
@@ -77,7 +79,7 @@ func newURLCmd() *urlCmd {
 			downloader, err := download.NewDownloadInstance(ctx, args[0], root.opts.connections,
 				file, status[0])
 			if err != nil {
-				fileutil.DeleteFile(filepath)
+				fileutil.DeleteFile(file.Name())
 				return err
 			}
 
@@ -87,7 +89,7 @@ func newURLCmd() *urlCmd {
 
 				if err := downloader.Download(); err != nil {
 					errChan <- err
-					fileutil.DeleteFile(filepath)
+					fileutil.DeleteFile(file.Name())
 					return
 				}
 			}()

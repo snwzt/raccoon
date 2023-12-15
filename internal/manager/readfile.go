@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -101,26 +102,27 @@ func newReadFileCmd() *readFileCmd {
 func fileInstance(wg *sync.WaitGroup, ctx context.Context, status *models.Status, url string, errChan chan error, opts readFileOpts) {
 	defer wg.Done()
 
-	file, filepath, err := fileutil.CreateFile(url, opts.directory)
+	file, filename, err := fileutil.CreateFile(url, opts.directory)
 	if err != nil {
 		errChan <- err
 		return
 	}
 	defer file.Close()
 
-	status.Path = filepath
+	status.Name = filename
 	status.Parts = make([]int64, opts.connections)
+	status.FinalSize = math.MaxInt // to fix the division by zero issue in begining
 
 	downloader, err := download.NewDownloadInstance(ctx, url, opts.connections, file, status)
 	if err != nil {
 		errChan <- err
-		fileutil.DeleteFile(filepath)
+		fileutil.DeleteFile(file.Name())
 		return
 	}
 
 	if err := downloader.Download(); err != nil {
 		errChan <- err
-		fileutil.DeleteFile(filepath)
+		fileutil.DeleteFile(file.Name())
 		return
 	}
 }

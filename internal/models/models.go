@@ -1,7 +1,7 @@
 package models
 
 type Status struct {
-	Path      string
+	Name      string
 	FinalSize int64
 	Parts     []int64
 	Done      bool

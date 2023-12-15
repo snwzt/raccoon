@@ -16,6 +16,7 @@ type model struct {
 	cancelContext context.CancelFunc
 	status        []*models.Status
 	err           error
+	quitting      *bool
 }
 
 func InitialModel(cancelContext context.CancelFunc, status []*models.Status) model {
@@ -23,10 +24,13 @@ func InitialModel(cancelContext context.CancelFunc, status []*models.Status) mod
 	spin.Spinner = spinner.Dot
 	spin.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 
+	var quit bool
+
 	return model{
 		spinner:       spin,
 		cancelContext: cancelContext,
 		status:        status,
+		quitting:      &quit,
 	}
 }
 
@@ -40,15 +44,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyCtrlC {
 			m.cancelContext()
 			return m, tea.Quit
-		} else {
-			return m, nil
 		}
+		return m, nil
 
 	case error:
 		m.err = msg
 		return m, nil
 
 	default:
+		if *m.quitting {
+			m.cancelContext()
+			return m, tea.Quit
+		}
+
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
@@ -62,6 +70,8 @@ func (m model) View() string {
 
 	var builder strings.Builder
 
+	quit := true
+
 	for _, data := range m.status {
 		curSize := int64(0)
 		for _, size := range data.Parts {
@@ -69,16 +79,19 @@ func (m model) View() string {
 		}
 
 		if data.Done && data.Err != nil {
-			builder.WriteString(fmt.Sprintf(" %s [FAILED] \n", data.Path))
+			builder.WriteString(fmt.Sprintf(" %s [FAILED] \n", data.Name))
 		} else if data.Done && data.Err == nil {
-			builder.WriteString(fmt.Sprintf(" %s [DONE] \n", data.Path))
+			builder.WriteString(fmt.Sprintf(" %s [DONE] \n", data.Name))
 		} else {
-			builder.WriteString(fmt.Sprintf(" %s %s [%0.1f MB/%0.1f MB] [%0.1f%%] \n", m.spinner.View(), data.Path,
+			quit = false
+			builder.WriteString(fmt.Sprintf(" %s%s [%0.1f MB/%0.1f MB] [%0.1f%%] \n", m.spinner.View(), data.Name,
 				float64(data.FinalSize)/(1024*1024),
 				float64(curSize)/(1024*1024),
 				(float64(curSize)/float64(data.FinalSize))*100))
 		}
 	}
+
+	*m.quitting = quit
 
 	return builder.String()
 }
