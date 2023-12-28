@@ -48,11 +48,13 @@ func (cmd *rootCmd) Execute(args []string) {
 
 	err := cmd.cmd.Execute()
 	if err != nil {
-		cmd.logger.Info().Msg("download failed")
+		cmd.logger.Info().Msg("error has occurred")
 		cmd.logger.Debug().Err(err).Msg("details")
 		cmd.exit(1) // exits with code 1, i.e. general error
 	} else {
-		cmd.logger.Info().Msg("download finished")
+		if cmd.cmd.Name() == "readfile" || cmd.cmd.Name() == "url" {
+			cmd.logger.Info().Msg("download finished")
+		}
 	}
 }
 
